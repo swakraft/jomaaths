@@ -1,5 +1,6 @@
+from datetime import datetime
 from typing import Literal
-from random import randint as rd, choice
+from random import choice, Random
 
 class Calc:
     def __init__(self, x, y, operation) -> None:
@@ -19,12 +20,17 @@ class Calc:
         return self.__str__().replace('*', '\*')
 
 class Engine:
-    def __init__(self, operations: list[Literal['+', '-', '/', '*']] = ['+', '-', '/', '*'], range: list[int] = [1, 10], lenght: int = 10, thread_id: str | int = 1) -> None:
+    def __init__(self, operations: list[Literal['+', '-', '/', '*']] = ['+', '-', '/', '*'], range: list[int] = [1, 10], lenght: int = 10, thread_id: str | int = 1, seed: int = None) -> None:
+        if seed is None:
+            seed = int(datetime.now().timestamp() * 1000)
+
         self.operations = operations
         self.min_int = range[0]
         self.max_int = range[1]
         self.lenght = lenght
         self.id = thread_id
+        self.seed = seed
+        self.random = Random(seed)
         self.calcs: list[Calc] = []
         self.generate()
     
@@ -33,13 +39,13 @@ class Engine:
             operation = choice(self.operations)
             if operation == "/":
                 while True:
-                    x = rd(self.min_int, self.max_int)
-                    y = rd(self.min_int, self.max_int)
+                    x = self.random.randint(self.min_int, self.max_int)
+                    y = self.random.randint(self.min_int, self.max_int)
                     if x%y == 0:
                         break
             
             else:
-                x = rd(self.min_int, self.max_int)
-                y = rd(self.min_int, self.max_int)
+                x = self.random.randint(self.min_int, self.max_int)
+                y = self.random.randint(self.min_int, self.max_int)
 
             self.calcs.append(Calc(x, y, operation))
