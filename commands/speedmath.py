@@ -25,15 +25,21 @@ async def startCommand(interaction: Interaction):
                 options = [
                     SelectOption(
                         label = "Baby",
-                        description = "z=x∘y      ∘ ∈ {+,×}      x, y ∈ [1;10]      5 calcs",
+                        description = "z=x∘y    ∘ ∈ {+,×}    x, y ∈ [1;10]    5 calcs",
                         value = "baby",
                         emoji = "😀"
                     ),
                     SelectOption(
                         label = "Easy",
-                        description = "z=x∘y      ∘ ∈ {+,−,×,÷}      x, y ∈ [1;10]      12 calcs",
+                        description = "z=x∘y    ∘ ∈ {+,−,×,÷}    x, y ∈ [1;10]    10 calcs",
                         value = "easy",
                         emoji = "🙂"
+                    ),
+                    SelectOption(
+                        label = "Normal",
+                        description = "z=x∘y    (x, y ∈ [1;10] ⇔ ∘ = ×    x, y ∈ [1;100] ⇔ ∘ ∈ {+,−,÷})    15 calcs",
+                        value = "normal",
+                        emoji = "😐"
                     )
                 ],
                 custom_id = f"START#{interaction.user.id}",
@@ -59,18 +65,34 @@ async def challengeCommand(interaction: Interaction, member: Member):
                     options = [
                         SelectOption(
                             label = "Baby",
-                            description = "z=x∘y      ∘ ∈ {+,×}      x, y ∈ [1;10]      5 calcs",
+                            description = "z=x∘y    ∘ ∈ {+,×}    x, y ∈ [1;10]    5 calcs",
                             value = "baby",
                             emoji = "😀"
                         ),
                         SelectOption(
                             label = "Easy",
-                            description = "z=x∘y      ∘ ∈ {+,−,×,÷}      x, y ∈ [1;10]      12 calcs",
+                            description = "z=x∘y    ∘ ∈ {+,−,×,÷}    x, y ∈ [1;10]    10 calcs",
                             value = "easy",
                             emoji = "🙂"
+                        ),
+                        SelectOption(
+                            label = "Normal",
+                            description = "z=x∘y    (x, y ∈ [1;10] ⇔ ∘ = ×    x, y ∈ [1;100] ⇔ ∘ ∈ {+,−,÷})    15 calcs",
+                            value = "normal",
+                            emoji = "😐"
                         )
                     ],
                     custom_id = f"STARTCHALLENGE#{interaction.user.id}#{member.id}",
                 )
             )
+        )
+    
+    else:
+        await interaction.response.send_message(
+            embed = Embed(
+                title = "Nope",
+                description = f"You can't challenge {member.display_name}",
+                color = COLOR
+            ),
+            ephemeral = True
         )
