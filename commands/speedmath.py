@@ -40,6 +40,12 @@ async def startCommand(interaction: Interaction):
                         description = "z=x∘y    (x, y ∈ [1;10] ⇔ ∘ = ×    x, y ∈ [1;100] ⇔ ∘ ∈ {+,−,÷})    15 calcs",
                         value = "normal",
                         emoji = "😐"
+                    ),
+                    SelectOption(
+                        label = "Custom",
+                        description = "Create a math engine with your own settings",
+                        value = "custom",
+                        emoji = "🤩"
                     )
                 ],
                 custom_id = f"START#{interaction.user.id}",
