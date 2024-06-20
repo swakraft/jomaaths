@@ -185,12 +185,13 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                     case 'baby':
                         engine = Engine(
                             operations=['+', '*'],
-                            lenght=2
+                            lenght=5
                         )
                     
                     case 'easy':
                         engine = Engine(
-                            range = [1, 10]
+                            range = [1, 10],
+                            lenght = 12
                         )
                 
                 c1 = await interaction.guild.create_text_channel(
