@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from prettytable import PrettyTable
 from classes.command import Command
-from classes.engine import Engine
+from classes.engine import Engine, RangeSettings
 from fun.funs import add_game_to_profile, get_profile
 from fun.views import game_stats_view
 from init import COLOR, client, log
@@ -36,8 +36,17 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                         )
                     
                     case 'easy':
+                        engine = Engine()
+                    
+                    case 'normal':
                         engine = Engine(
-                            range = [1, 10]
+                            lenght = 15,
+                            range = RangeSettings(
+                                add_range = [1, 100],
+                                subtract_range = [1, 100],
+                                divide_range = [1, 100],
+                                multiply_range = [1, 10]
+                            )
                         )
 
                 await interaction.response.edit_message(
@@ -192,6 +201,17 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                         engine = Engine(
                             range = [1, 10],
                             lenght = 12
+                        )
+                    
+                    case 'normal':
+                        engine = Engine(
+                            lenght = 15,
+                            range = RangeSettings(
+                                add_range = [1, 100],
+                                subtract_range = [1, 100],
+                                divide_range = [1, 100],
+                                multiply_range = [1, 10]
+                            )
                         )
                 
                 c1 = await interaction.guild.create_text_channel(
