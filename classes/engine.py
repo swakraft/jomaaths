@@ -19,14 +19,20 @@ class Calc:
     def markdown_compatible(self) -> str:
         return self.__str__().replace('*', '\*')
 
+class RangeSettings:
+    def __init__(self, add_range: list[int], subtract_range: list[int], divide_range: list[int], multiply_range: list[int]) -> None:
+        self.add_range = add_range
+        self.subtract_range = subtract_range
+        self.divide_range = divide_range
+        self.multiply_range = multiply_range
+
 class Engine:
-    def __init__(self, operations: list[Literal['+', '-', '/', '*']] = ['+', '-', '/', '*'], range: list[int] = [1, 10], lenght: int = 10, thread_id: str | int = 1, seed: int = None) -> None:
+    def __init__(self, operations: list[Literal['+', '-', '/', '*']] = ['+', '-', '/', '*'], range: RangeSettings = RangeSettings([1, 10], [1, 10], [1, 10], [1, 10]), lenght: int = 10, thread_id: str | int = 1, seed: int = None) -> None:
         if seed is None:
             seed = int(datetime.now().timestamp() * 1000)
 
         self.operations = operations
-        self.min_int = range[0]
-        self.max_int = range[1]
+        self.range = range
         self.lenght = lenght
         self.id = thread_id
         self.seed = seed
@@ -37,15 +43,24 @@ class Engine:
     def generate(self):
         for i in range(self.lenght):
             operation = choice(self.operations)
-            if operation == "/":
-                while True:
-                    x = self.random.randint(self.min_int, self.max_int)
-                    y = self.random.randint(self.min_int, self.max_int)
-                    if x%y == 0:
-                        break
+            match operation:
+                case '/':
+                    while True:
+                        x = self.random.randint(self.range.divide_range[0], self.range.divide_range[1])
+                        y = self.random.randint(self.range.divide_range[0], self.range.divide_range[1])
+                        if x%y == 0:
+                            break
+                
+                case '*':
+                    x = self.random.randint(self.range.multiply_range[0], self.range.multiply_range[1])
+                    y = self.random.randint(self.range.multiply_range[0], self.range.multiply_range[1])
+                
+                case '+':
+                    x = self.random.randint(self.range.add_range[0], self.range.add_range[1])
+                    y = self.random.randint(self.range.add_range[0], self.range.add_range[1])
+                
+                case '-':
+                    x = self.random.randint(self.range.subtract_range[0], self.range.subtract_range[1])
+                    y = self.random.randint(self.range.subtract_range[0], self.range.subtract_range[1])
             
-            else:
-                x = self.random.randint(self.min_int, self.max_int)
-                y = self.random.randint(self.min_int, self.max_int)
-
             self.calcs.append(Calc(x, y, operation))
