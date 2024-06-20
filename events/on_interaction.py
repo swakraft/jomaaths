@@ -218,26 +218,6 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                 )
                     
                 async def handle_challenge(engine: Engine, user: User, channel: TextChannel | DMChannel):
-                    await channel.send(
-                        embed = Embed(
-                            title = "Game loaded",
-                            description = "Press Start",
-                            color = COLOR
-                        ),
-                        view = View(timeout = None).add_item(
-                            Button(
-                                label = "Start",
-                                style = ButtonStyle.green,
-                                custom_id = f"CONFIRMCHALLENGESTART#{user.id}"
-                            )
-                        )
-                    )
-                    def check_button(interaction2: Interaction):
-                        return interaction2.user == interaction.user and interaction2.data['custom_id'].split('#')[0] == "CONFIRMCHALLENGESTART"
-
-                    interaction2: Interaction = await client.wait_for('interaction', check = check_button)
-                    await interaction2.response.edit_message()
-                    await interaction2.message.delete()
                     stats = []
                     for calc in engine.calcs:
                         await channel.send(content=str(calc), embed=None, view=None)
@@ -267,9 +247,49 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                     return stats
                 
                 async def challenger_thread():
+                    await c1.send(
+                        embed = Embed(
+                            title = "Game loaded",
+                            description = "Press Start",
+                            color = COLOR
+                        ),
+                        view = View(timeout = None).add_item(
+                            Button(
+                                label = "Start",
+                                style = ButtonStyle.green,
+                                custom_id = f"CONFIRMCHALLENGESTART#{interaction.user.id}"
+                            )
+                        )
+                    )
+                    def check_button(interaction2: Interaction):
+                        return interaction2.user == interaction.user and interaction2.data['custom_id'].split('#')[0] == "CONFIRMCHALLENGESTART"
+
+                    interaction2: Interaction = await client.wait_for('interaction', check = check_button)
+                    await interaction2.response.edit_message()
+                    await interaction2.message.delete()
                     return await handle_challenge(engine, interaction.user, c1)
 
                 async def challenged_thread():
+                    await c2.send(
+                        embed = Embed(
+                            title = "Game loaded",
+                            description = "Press Start",
+                            color = COLOR
+                        ),
+                        view = View(timeout = None).add_item(
+                            Button(
+                                label = "Start",
+                                style = ButtonStyle.green,
+                                custom_id = f"CONFIRMCHALLENGESTART#{target.id}"
+                            )
+                        )
+                    )
+                    def check_button(interaction2: Interaction):
+                        return interaction2.user == target and interaction2.data['custom_id'].split('#')[0] == "CONFIRMCHALLENGESTART"
+
+                    interaction2: Interaction = await client.wait_for('interaction', check = check_button)
+                    await interaction2.response.edit_message()
+                    await interaction2.message.delete()
                     return await handle_challenge(engine, target, c2)
 
                 challenger_task = asyncio.create_task(challenger_thread())
@@ -283,12 +303,24 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                 await c2.delete()
                 content_challenger, embed_challenger = game_stats_view(challenger_stats, difficulty_type, interaction.user)
                 content_challenged, embed_challenged = game_stats_view(challenged_stats, difficulty_type, target)
-                table = PrettyTable()
-                for name, value in zip(challenger_stats, challenged_stats):
-                    pass
+                challenger_points = 0
+                challenged_points = 0
+                for calc_challenger, calc_challenged in zip(challenger_stats, challenged_stats):
+                    if calc_challenger['success'] and calc_challenged['success']:
+                        if calc_challenger['duration'] < calc_challenged['duration']:
+                            challenger_points += 1
+
+                        else:
+                            challenged_points += 1
+
+                    elif calc_challenger['success']:
+                        challenger_points += 1
+                        
+                    elif calc_challenged['success']:
+                        challenged_points += 1
                 
                 await interaction.edit_original_response(
-                    content = f"## {interaction.user.display_name}:\n{content_challenger}## {target.display_name}:\n{content_challenged}",
+                    content = f"## {interaction.user.display_name}:\nScore {challenger_points}\n{content_challenger}## {target.display_name}:\nScore {challenged_points}\n{content_challenged}\n\n> scrores are calculated based on the speed of the fastest.\n\n",
                     embeds = [
                         embed_challenged,
                         embed_challenger

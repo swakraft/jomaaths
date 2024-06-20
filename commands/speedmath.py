@@ -74,3 +74,13 @@ async def challengeCommand(interaction: Interaction, member: Member):
                 )
             )
         )
+    
+    else:
+        await interaction.response.send_message(
+            embed = Embed(
+                title = "Nope",
+                description = f"You can't challenge {member.display_name}",
+                color = COLOR
+            ),
+            ephemeral = True
+        )
