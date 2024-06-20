@@ -78,8 +78,10 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                         return message.author.id == interaction.user.id and message.channel.id == interaction.channel.id
                     start = datetime.now()
                     message: Message = await client.wait_for("message", check = check)
+                    
                     end = datetime.now()
                     content = message.content.strip()
+                    log.debug(type(content), content)
                     stat = {
                         "duration": (end - start).total_seconds(),
                         "calc": str(calc),
@@ -87,8 +89,13 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                         "answer": calc.answer,
                         "date": int(datetime.now().timestamp())
                     }
+                    try: 
+                        content = int(content)
                     
-                    if int(content) == calc.answer:
+                    except:
+                        message.reply(content = "Please only send numbers")
+                    
+                    if content == calc.answer:
                         #await message.add_reaction("✅")
                         stat['success'] = True
                     
