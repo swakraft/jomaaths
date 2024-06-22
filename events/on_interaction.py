@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 import re
 from discord.ui import Modal, TextInput
 from classes.command import Command
