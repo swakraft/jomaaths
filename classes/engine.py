@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Literal
-from random import choice, Random, choices
+from random import Random
 
 class Calc:
     def __init__(self, x, y, operation) -> None:
@@ -46,7 +46,7 @@ class Engine:
     
     def generate(self):
         for i in range(self.length):
-            operation = choices(self.operations, self.operations_probs)[0]
+            operation = self.random.choices(self.operations, self.operations_probs)[0]
             match operation:
                 case '/':
                     while True:
