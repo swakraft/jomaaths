@@ -1,9 +1,9 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 import re
 from discord.ui import Modal, TextInput
 from classes.command import Command
-from classes.engine import Engine, RangeSettings
+from classes.engine import Engine, ProbSettings, RangeSettings
 from fun.funs import add_game_to_profile, get_profile
 from fun.views import define_operation, engine_editor_main, game_stats_view
 from init import COLOR, client, log
@@ -31,7 +31,7 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                 match difficulty_type:
                     case 'baby':
                         engine = Engine(
-                            operations=['+', '*'],
+                            operations_probs = ProbSettings(0.5, 0.5),
                             length=5
                         )
                     
@@ -214,6 +214,12 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                             elif i2_id.split('#')[0] == "STARTCUSTOM":
                                 interaction = interaction2
                                 break
+                    
+                    case 'medium':
+                        engine = Engine(
+                            operations_probs = ProbSettings(der_prob = 1),
+                            length = 3
+                        )
 
                 await interaction.response.edit_message(
                     embed = Embed(
