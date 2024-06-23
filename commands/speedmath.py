@@ -42,6 +42,12 @@ async def startCommand(interaction: Interaction):
                         emoji = "😐"
                     ),
                     SelectOption(
+                        label = "Medium",
+                        description = "Derivate polynomial N times and evaluate",
+                        value = "medium",
+                        emoji = "☹️"
+                    ),
+                    SelectOption(
                         label = "Custom",
                         description = "Create a math engine with your own settings",
                         value = "custom",
