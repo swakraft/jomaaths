@@ -1,88 +1,119 @@
 import inspect
 from datetime import datetime
+from typing import Any
 
-class DisplaySettings:
-    def __init__(self, show_date: bool = True, show_hour: bool = True, show_caller: bool = True):
-        self.show_date = show_date
-        self.show_hour = show_hour
-        self.show_caller = show_caller
+class Line:
+    def __init__(self, timestamp: str, color_code: str, level: str, caller_info: str, content: tuple[str], line: int, log: 'Logger') -> None:
+        self._timestamp = timestamp
+        self._color_code = color_code
+        self._level = level
+        self._caller_info = caller_info
+        self._content = content
+        self._line = line
+        self._log = log
+    
+    def _move_cursor_up(self, n):
+        print(f"\033[{n}A", end='')
+
+    def _move_cursor_down(self, n):
+        print(f"\033[{n}B", end='')
+    
+    def _clear_line(self):
+        print("\033[K", end='')
+    
+    def add_text(self, *content):
+        self._content += content
+    
+    def set_text(self, *content):
+       self._content = content
+
+    def _edit(self):
+        n = self._log.curent_line - self._line + 1
+        self._move_cursor_up(n)
+        self._clear_line()
+        message = ' '.join(map(str, self._content))
+        text = f"\33[90m{self._timestamp}\033[1;{self._color_code};40m[{self._level}]{self._caller_info}\033[0;0m {message}"
+        print(text)
+        self._move_cursor_down(n)
+
+    def edit_print(self):
+        self._edit()
+    
+    def info(self):
+        self._level = 'INFO'
+        self._color_code = '32'
+        self._edit()
+
+    def warn(self):
+        self._level = 'WARN'
+        self._color_code = '33'
+        self._edit()
+
+    def crit(self):
+        self._level = 'CRIT'
+        self._color_code = '31'
+        self._edit()
+
+    def debug(self):
+        self._level = 'DEBUG'
+        self._color_code = '95', 
+        self._edit()
+
+    def get(self):
+        self._level = 'GET'
+        self._color_code = '38;5;30'
+        self._edit()
+
+    def post(self):
+        self._level = 'POST'
+        self._color_code = '38;5;202'
+        self._edit()
+
 
 class Logger:
-    def __init__(self, display_settings:DisplaySettings = DisplaySettings()):
-        self.display_settings = display_settings
+    def __init__(self):
+        self.curent_line = 0
+        self.lines: list[str] = []
 
-    def __formatter__(self, datetime:datetime):
-        show_date = self.display_settings.show_date
-        show_hour = self.display_settings.show_hour
+    def _formatter(self, datetime_obj: datetime) -> str:
+        date_str = datetime_obj.strftime('%d/%m/%Y')
+        hour_str = datetime_obj.strftime('%H:%M:%S')
+        return f'{date_str} à {hour_str} '
 
-        if not show_date and not show_hour:
-            return ''
+    def log(self, level: str, color_code: str, *content: Any):
+        if level not in ['GET', 'POST']:
+            frame = inspect.stack()[2]
+            caller = frame.function if frame.function != '<module>' else 'Main thread'
+            filename = frame.filename.split('/')[-1]  # Just the file name, not the full path
+            lineno = frame.lineno
+            caller_info = f"{filename}:{lineno} {caller}"
+            caller_info = f"\33[0;96m {caller_info}\33[0;96m"
         
-        elif show_date and show_hour:
-            return f'{0 if datetime.day < 10 else ""}{datetime.day}/{0 if datetime.month < 10 else ""}{datetime.month}/{datetime.year} à {0 if datetime.hour < 10 else ""}{datetime.hour}:{0 if datetime.minute < 10 else ""}{datetime.minute}:{0 if datetime.second < 10 else ""}{datetime.second} '
-        
-        elif show_date:
-            return f'{0 if datetime.day < 10 else ""}{datetime.day}/{0 if datetime.month < 10 else ""}{datetime.month}/{datetime.year} '
-        
-        elif show_hour:
-            return f'{0 if datetime.hour < 10 else ""}{datetime.hour}:{0 if datetime.minute < 10 else ""}{datetime.minute}:{0 if datetime.second < 10 else ""}{datetime.second} '
-
-    def info(self, *content: str):
-        if self.display_settings.show_caller:
-            caller = inspect.stack()[1][3]
-            caller = (caller + ":") if caller != '<module>' else 'main thread:'
-            caller = "\33[0;96m " + caller + "\33[0;96m "
-    
         else:
-            caller = "\033[0;0m "
+            caller_info = ''
+
+        message = ' '.join(map(str, content))
+        timestamp = self._formatter(datetime.now())
+        text = f"\33[90m{timestamp}\033[1;{color_code};40m[{level}]{caller_info}\033[0;0m {message}"
+        self.lines.append(text)
+        self.curent_line += 1
+        print(text)
+        return Line(timestamp, color_code, level, caller_info, content,self.curent_line, self)
         
-        t = ''
-        for i in content:
-            t +=  str(i) + ' '
+    def info(self, *content: Any):
+        self.log('INFO', '32', *content)
 
-        print("\33[90m" + self.__formatter__(datetime.now()) + "\033[1;32;40m[INFO]" + caller + "\033[0;0m" + str(t.strip()))
-    
-    def warn(self, *content: str):
-        if self.display_settings.show_caller:
-            caller = inspect.stack()[1][3]
-            caller = (caller + ":") if caller != '<module>' else 'main thread:'
-            caller = "\33[0;96m " + caller + "\33[0;96m "
-    
-        else:
-            caller = "\033[0;0m "
+    def warn(self, *content: Any):
+        self.log('WARN', '33', *content)
 
-        t = ''
-        for i in content:
-            t +=  str(i) + ' '
+    def crit(self, *content: Any):
+        self.log('CRIT', '31', *content)
 
-        print("\33[90m" + self.__formatter__(datetime.now()) + "\033[1;33;40m[WARN]" + caller + "\033[0;0m" + str(t.strip()))
-    
-    def crit(self, *content: str):
-        if self.display_settings.show_caller:
-            caller = inspect.stack()[1][3]
-            caller = (caller + ":") if caller != '<module>' else 'main thread:'
-            caller = "\33[0;96m " + caller + "\33[0;96m "
-    
-        else:
-            caller = "\033[0;0m "
+    def debug(self, *content: Any):
+        self.log('DEBUG', '95', *content)
 
-        t = ''
-        for i in content:
-            t +=  str(i) + ' '
-        
-        print("\33[90m" + self.__formatter__(datetime.now()) + "\033[1;31;40m[CRIT]" + caller + "\033[0;0m" + str(t.strip()))
-    
-    def debug(self, *content: str):
-        if self.display_settings.show_caller:
-            caller = inspect.stack()[1][3]
-            caller = (caller + ":") if caller != '<module>' else 'main thread:'
-            caller = "\33[0;96m " + caller + "\33[0;96m "
-    
-        else:
-            caller = "\033[0;0m "
+    def get(self, *content: Any):
+        return self.log('GET', '38;5;30', *content)  # Couleur 30
 
-        t = ''
-        for i in content:
-            t +=  str(i) + ' '
-            
-        print("\33[90m" + self.__formatter__(datetime.now()) + "\033[1;95;40m[DEBUG]" + caller + "\033[0;0m" + str(t.strip()))
+    def post(self, *content: Any):
+        return self.log('POST', '38;5;202',  *content)  # Couleur 202
