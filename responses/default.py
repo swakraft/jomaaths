@@ -11,5 +11,5 @@ async def send(interaction: Interaction, title: str, description: str):
         ephemeral = True
     )
 
-async def missing_permission(interaction: Interaction):
-    await send(interaction, "Pemission manquante", "Vous ne pouvez pas faire ça")
+async def invalid_parameter(interaction: Interaction):
+    await send(interaction, "Invalid parameter", "Please try again")

@@ -1,14 +1,13 @@
 import asyncio
 from datetime import datetime
-import re
-from discord.ui import Modal, TextInput
 from classes.command import Command
-from classes.engine import Engine, ProbSettings, RangeSettings
+from classes.engine import Engine
 from fun.funs import add_game_to_profile, get_profile
-from fun.views import define_operation, engine_editor_main, game_stats_view
+from fun.views import game_stats_view
 from init import COLOR, client, log
-from discord import ButtonStyle, DMChannel, Embed, Interaction, Message, PermissionOverwrite, SelectOption, TextChannel, User
+from discord import ButtonStyle, Embed, Interaction, PermissionOverwrite, SelectOption, errors
 from discord.ui import View, Select, Button
+from responses.custom_engine import main_custom_engine
 
 @client.event
 async def on_interaction(interaction: Interaction):
@@ -28,264 +27,34 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
         case "START":
             if id.split("#")[1] == str(interaction.user.id):
                 difficulty_type = values[0]
-                match difficulty_type:
-                    case 'baby':
-                        engine = Engine(
-                            operations_probs = ProbSettings(0.5, 0.5),
-                            length=5
-                        )
-                    
-                    case 'easy':
-                        engine = Engine()
-                    
-                    case 'normal':
-                        engine = Engine(
-                            length = 15,
-                            range = RangeSettings(
-                                add_range = [1, 100],
-                                subtract_range = [1, 100],
-                                divide_range = [1, 100],
-                                multiply_range = [1, 10]
+                if difficulty_type == "custom":
+                    engine = await main_custom_engine(interaction, False)
+                
+                else:
+                    engine = Engine.from_difficulty_id(difficulty_type)
+
+                    await interaction.response.edit_message(
+                        embed = Embed(
+                            title = "Game ready !",
+                            description = "Answer the calculations as quickly as possible! Press Start when ready!",
+                            color = COLOR
+                        ),
+                        view = View(timeout = None).add_item(
+                            Button(
+                                label = "Start",
+                                style = ButtonStyle.green,
+                                custom_id = f"CONFIRMSTART#{interaction.user.id}"
                             )
                         )
-                    
-                    case 'custom':
-                        length = None
-                        engine = Engine()
-                        embed, view = engine_editor_main(engine, interaction)
-                        await interaction.response.send_message(
-                            embed = embed,
-                            view = view
-                        )
-                        
-                        async def editor_button_press_check(interaction: Interaction):
-                            id = interaction.data['custom_id'].split('#')[0]
-                            log.info(interaction.user.id == int(id.split("#")[1]), id.split("#")[0] in ["DEFINNBCALCS", "DEFINE+OP", "DEFINE-OP", "DEFINE/OP", "DEFINE/OP"])
-                            return interaction.user.id == int(id.split("#")[1]) and id.split("#")[0] in ["DEFINNBCALCS", "DEFINE+OP", "DEFINE-OP", "DEFINE/OP", "DEFINE/OP"]
-                    
-                        async def define_operation_press_check(interaction: Interaction):
-                            id = interaction.data['custom_id'].split('#')[0]
-                            return interaction.user.id == int(id.split("#")[1]) and re.match(r"^SET[\+\-\/\*](FREQ|RANGE)$", id.split("#")[0])
-                        
-                        while True:
-                            log.info('waiting for define, start button')
-                            interaction2: Interaction = await client.wait_for("interaction", check = editor_button_press_check)
-                            log.info("interaction2")
-                            i2_id = interaction2.data["custom_id"]
-                            if i2_id.split("#")[0] == "DEFINENBCALCS":
-                                modal = Modal(
-                                    title = "Number of calcs"
-                                )
-                                raw_length = TextInput(
-                                    label = "Number of calculus",
-                                    placeholder = 10,
-                                    default = length
-                                )
-                                modal.add_item(raw_length)
-                                async def got_length(interaction3: Interaction):
-                                    length = int(raw_length.value)
-                                    engine.length = length
-                                    embed, view = engine_editor_main(engine, interaction)
-                                    if length > 0:
-                                        await interaction3.response.edit_message(
-                                            embed = embed,
-                                            view = view
-                                        )
-                                    
-                                    else:
-                                        await interaction.response.edit_message(
-                                            embed = Embed(
-                                                title = "Error",
-                                                description = "Length cannot must be superior to 0",
-                                                color = COLOR
-                                            )
-                                        )
-                                
-                                modal.on_submit = got_length
-                                await interaction2.response.send_modal(modal)
-                            
-                            elif re.match(r"^DEFINE", i2_id):
-                                embed, view, range = define_operation(interaction2.data['custom_id'][6], engine, interaction)
-                                await interaction2.response.edit_message(
-                                    embed = embed,
-                                    view = view
-                                )
-                                while True:
-                                    log.info('waiting for range, frequency, back button')
-                                    interaction3: Interaction = await client.wait_for('interaction', check = define_operation_press_check)
-                                    i3_id = interaction3.data["custom_id"]
-                                    if re.match(r"^SET[\+\-\/\*]RANGE$", i3_id.split("#")[0]):
-                                        operation = i3_id[3]
-                                        modal = Modal(
-                                            title = f"Customize range '{operation}'"
-                                        )
-                                        raw_min_range = TextInput(
-                                            label = "Min number",
-                                            placeholder = 1,
-                                            default = range[0]
-                                        )
-                                        raw_max_range = TextInput(
-                                            label = "Max number",
-                                            placeholder = 1,
-                                            default = range[1]
-                                        )
-                                        modal.add_item(raw_min_range).add_item(raw_max_range)
-                                        async def got_range(interaction4: Interaction):
-                                            min_range = int(raw_min_range.value)
-                                            max_range = int(raw_max_range.value)
-                                            match operation:
-                                                case '+':
-                                                    engine.range.add_range = [min_range, max_range]
-                                                
-                                                case '-':
-                                                    engine.range.subtract_range = [min_range, max_range]
-
-                                                case '/':
-                                                    engine.range.divide_range = [min_range, max_range]
-
-                                                case '*':
-                                                    engine.range.multiply_range = [min_range, max_range]
-                                            
-                                            embed, view, range = define_operation(operation, engine, interaction)
-                                            await interaction4.response.edit_message(
-                                                embed = embed,
-                                                view = view
-                                            )
-                                        
-                                        modal.on_submit = got_range
-                                        await interaction3.response.send_modal(modal)
-                                    
-                                    elif re.match(r"^SET[\+\-\/\*]FREQU$", i3_id.split("#")[0]):
-                                        operation = i3_id[3]
-                                        modal = Modal(
-                                            title = f"Frequency of {operation}"
-                                        )
-                                        match operation:
-                                            case '+':
-                                               frequency = engine.operations_probs[0]
-                                            
-                                            case '-':
-                                                frequency = engine.operations_probs[1]
-
-                                            case '/':
-                                                frequency = engine.operations_probs[2]
-
-                                            case '*':
-                                                frequency = engine.operations_probs[3]
-
-                                        raw_frequency = TextInput(
-                                            label = "Frequency [0~1]",
-                                            placeholder = "0.25",
-                                            default = str(frequency)
-                                        )
-                                        modal.add_item(raw_frequency)
-                                        async def got_frequency(interaction4: Interaction):
-                                            frequency = float(raw_frequency.value)
-                                            match operation:
-                                                case '+':
-                                                    engine.operations_probs[0] = frequency
-                                                
-                                                case '-':
-                                                    engine.operations_probs[1] = frequency
-
-                                                case '/':
-                                                    engine.operations_probs[2] = frequency
-
-                                                case '*':
-                                                    engine.operations_probs[3] = frequency
-                                            
-                                            embed, view, range = define_operation(operation, engine, interaction)
-                                            await interaction4.response.edit_message(
-                                                embed = embed,
-                                                view = view
-                                            )
-                                        
-                                        modal.on_submit = got_frequency
-                                        await interaction3.response.send_modal(modal)
-                                    
-                                    elif i3_id.split("#")[0] == "BACKTOMAINCUSTOM":
-                                        embed, view = engine_editor_main(engine, interaction)
-                                        await interaction3.response.send_message(
-                                            embed = embed,
-                                            view = view
-                                        )
-                                        break
-                            
-                            elif i2_id.split('#')[0] == "STARTCUSTOM":
-                                interaction = interaction2
-                                break
-                    
-                    case 'medium':
-                        engine = Engine(
-                            operations_probs = ProbSettings(der_prob = 1),
-                            length = 3
-                        )
-
-                await interaction.response.edit_message(
-                    embed = Embed(
-                        title = "Game loaded",
-                        description = "Press Start",
-                        color = COLOR
-                    ),
-                    view = View(timeout = None).add_item(
-                        Button(
-                            label = "Start",
-                            style = ButtonStyle.green,
-                            custom_id = f"CONFIRMSTART#{interaction.user.id}"
-                        )
                     )
-                )
+
                 def check_button(interaction2: Interaction):
                     return interaction2.user == interaction.user and interaction2.data['custom_id'].split('#')[0] == "CONFIRMSTART"
 
+                log.info("Waiting for start")
                 interaction2: Interaction = await client.wait_for('interaction', check = check_button)
-                stats:list[dict] = []
-                first = True
-                for calc in engine.calcs:
-                    if first:
-                        await interaction2.response.edit_message(
-                            content = str(calc),
-                            embed = None,
-                            view = None
-                        )
-                        first = False
-                    
-                    else:
-                        await interaction.channel.send(
-                            content = str(calc)
-                        )
-                    
-                    def check(message: Message):
-                        return message.author.id == interaction.user.id and message.channel.id == interaction.channel.id
-                    start = datetime.now()
-                    message: Message = await client.wait_for("message", check = check)
-                    
-                    end = datetime.now()
-                    content = message.content.strip()
-                    log.debug(type(content), content)
-                    stat = {
-                        "duration": (end - start).total_seconds(),
-                        "calc": str(calc),
-                        "user_answer": content,
-                        "answer": calc.answer,
-                        "date": int(datetime.now().timestamp())
-                    }
-                    try: 
-                        content = int(content)
-                    
-                    except:
-                        message.reply(content = "Please only send numbers")
-                    
-                    if content == calc.answer:
-                        #await message.add_reaction("✅")
-                        stat['success'] = True
-                    
-                    else:
-                        #await message.add_reaction("😐")
-                        stat['success'] = False
-                    
-                    stats.append(stat)
-
+                await interaction2.message.delete()
+                stats = await engine.start(interaction.channel, interaction.user)
                 content, embed = game_stats_view(stats, difficulty_type, interaction.user)
                 await interaction.channel.send(
                     content = content,
@@ -361,83 +130,49 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
         case "STARTCHALLENGE":
             if id.split("#")[1] == str(interaction.user.id):
                 target = client.get_user(int(id.split("#")[2]))
-                difficulty_type = values[0]
-                match difficulty_type:
-                    case 'baby':
-                        engine = Engine(
-                            operations=['+', '*'],
-                            length=5
-                        )
-                    
-                    case 'easy':
-                        engine = Engine(
-                            range = [1, 10],
-                            length = 12
-                        )
-                    
-                    case 'normal':
-                        engine = Engine(
-                            length = 15,
-                            range = RangeSettings(
-                                add_range = [1, 100],
-                                subtract_range = [1, 100],
-                                divide_range = [1, 100],
-                                multiply_range = [1, 10]
-                            )
-                        )
-                
-                c1 = await interaction.guild.create_text_channel(
-                    name = interaction.user.display_name,
-                    overwrites = {
-                        interaction.user: PermissionOverwrite(read_messages = True, send_messages = True),
-                        interaction.guild.default_role: PermissionOverwrite(read_messages = False)
-                    }
-                )
-                c2 = await interaction.guild.create_text_channel(
-                    name = target.display_name,
-                    overwrites = {
-                        target: PermissionOverwrite(read_messages = True, send_messages = True),
-                        interaction.guild.default_role: PermissionOverwrite(read_messages = False)
-                    }
-                )
-
-                await interaction.response.edit_message(
-                    view = View(),
-                    embed = Embed(
-                        title = "Channels created",
-                        description = f"Press Start in your channel\n{c1.mention} {c2.mention}",
-                        color = COLOR
-                    )
-                )
-                    
-                async def handle_challenge(engine: Engine, user: User, channel: TextChannel | DMChannel):
-                    stats = []
-                    for calc in engine.calcs:
-                        await channel.send(content=str(calc), embed=None, view=None)
-
-                        def check(message: Message):
-                            return message.author.id == user.id and message.channel.id == channel.id
-                        
-                        start = datetime.now()
-                        message: Message = await client.wait_for("message", check=check)
-                        end = datetime.now()
-                        content = message.content.strip()
-                        stat = {
-                            "duration": (end - start).total_seconds(),
-                            "calc": str(calc),
-                            "user_answer": content,
-                            "answer": calc.answer,
-                            "date": int(datetime.now().timestamp())
+                try:
+                    c1 = await interaction.guild.create_text_channel(
+                        name = interaction.user.display_name,
+                        overwrites = {
+                            interaction.user: PermissionOverwrite(read_messages = True, send_messages = True),
+                            interaction.guild.default_role: PermissionOverwrite(read_messages = False),
+                            client.user: PermissionOverwrite(read_messages = True, send_messages = True),
                         }
-                        
-                        if int(content) == calc.answer:
-                            stat['success'] = True
-                        else:
-                            stat['success'] = False
-                        
-                        stats.append(stat)
-
-                    return stats
+                    )
+                    c2 = await interaction.guild.create_text_channel(
+                        name = target.display_name,
+                        overwrites = {
+                            target: PermissionOverwrite(read_messages = True, send_messages = True),
+                            interaction.guild.default_role: PermissionOverwrite(read_messages = False),
+                            client.user: PermissionOverwrite(read_messages = True, send_messages = True),
+                        }
+                    )
+                
+                except errors.Forbidden:
+                    await interaction.response.send_message(
+                        embed = Embed(
+                            title = "Error",
+                            description = "I don't have permissions to create channels",
+                            color = COLOR
+                        ),
+                        ephemeral = True
+                    )
+                    return
+                
+                difficulty_type = values[0]
+                if difficulty_type == "custom":
+                    engine = await main_custom_engine(interaction, True, c1, c2)
+                
+                else:
+                    engine = Engine.from_difficulty_id(difficulty_type)
+                    await interaction.response.edit_message(
+                        view = View(),
+                        embed = Embed(
+                            title = "Channels created",
+                            description = f"Press Start in your channel\n{c1.mention} {c2.mention}",
+                            color = COLOR
+                        )
+                    )
                 
                 async def challenger_thread():
                     await c1.send(
@@ -460,7 +195,7 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                     interaction2: Interaction = await client.wait_for('interaction', check = check_button)
                     await interaction2.response.edit_message()
                     await interaction2.message.delete()
-                    return await handle_challenge(engine, interaction.user, c1)
+                    return await engine.start(c1, interaction.user)
 
                 async def challenged_thread():
                     await c2.send(
@@ -483,7 +218,7 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                     interaction2: Interaction = await client.wait_for('interaction', check = check_button)
                     await interaction2.response.edit_message()
                     await interaction2.message.delete()
-                    return await handle_challenge(engine, target, c2)
+                    return await engine.start(c2, target)
 
                 challenger_task = asyncio.create_task(challenger_thread())
                 challenged_task = asyncio.create_task(challenged_thread())
@@ -513,7 +248,7 @@ async def interact(interaction: Interaction, id: str, values: list[str]):
                         challenged_points += 1
                 
                 await interaction.edit_original_response(
-                    content = f"## {interaction.user.display_name}:\nScore {challenger_points}\n{content_challenger}## {target.display_name}:\nScore {challenged_points}\n{content_challenged}\n\n> scrores are calculated based on the speed of the fastest.\n\n",
+                    content = f"> Scores are calculated based on the speed of the fastest.\n## {interaction.user.display_name}:\nScore: {challenger_points}\n{content_challenger}## {target.display_name}:\nScore: {challenged_points}\n{content_challenged}\n\n\n",
                     embeds = [
                         embed_challenged,
                         embed_challenger
