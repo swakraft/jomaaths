@@ -15,13 +15,13 @@ speed_math_tree = CustomGroup(name = "speedmath", description = "Minigame")
 async def startCommand(interaction: Interaction):
     await interaction.response.send_message(
         embed = Embed(
-            title = "Game Settings",
-            description = "Configure your game",
+            title = "Start a new game",
+            description = "Select your difficulty",
             color = COLOR
         ),
         view = View(timeout = None).add_item(
             Select(
-                placeholder = "Game type",
+                placeholder = "Game difficulty",
                 options = [
                     SelectOption(
                         label = "Baby",
@@ -92,6 +92,18 @@ async def challengeCommand(interaction: Interaction, member: Member):
                             description = "z=x∘y    (x, y ∈ [1;10] ⇔ ∘ = ×    x, y ∈ [1;100] ⇔ ∘ ∈ {+,−,÷})    15 calcs",
                             value = "normal",
                             emoji = "😐"
+                        ),
+                        SelectOption(
+                            label = "Medium",
+                            description = "Derivate polynomial N times and evaluate",
+                            value = "medium",
+                            emoji = "☹️"
+                        ),
+                        SelectOption(
+                            label = "Custom",
+                            description = "Create a math engine with your own settings",
+                            value = "custom",
+                            emoji = "🤩"
                         )
                     ],
                     custom_id = f"STARTCHALLENGE#{interaction.user.id}#{member.id}",

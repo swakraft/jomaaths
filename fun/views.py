@@ -2,6 +2,7 @@ from typing import Literal
 from discord import ButtonStyle, Embed, Interaction, User
 from prettytable import PrettyTable
 from discord.ui import View, Button
+import prettytable
 from init import log
 
 from classes.engine import Engine
@@ -23,7 +24,7 @@ def game_stats_view(stats: list[dict], difficulty_type: str, user: User):
 
     table.border = False
     table.header = True
-    table.hrules = False
+    table.hrules = prettytable.HRuleStyle.NONE
     table.align = "l"
     txt = ""
     for l in table.get_string().split("\n"):
@@ -60,57 +61,78 @@ def game_stats_view(stats: list[dict], difficulty_type: str, user: User):
         title = "Results",
         description = description,
         color = COLOR
-    ).set_footer(text = difficulty_type).set_author(name = user.display_name, icon_url = user.display_avatar.url)
+    ).set_footer(
+        text = f"Difficulty: {difficulty_type}"
+    ).set_author(
+        name = user.display_name,
+        icon_url = user.display_avatar.url
+    )
     return txt, embed
 
 def engine_editor_main(engine: Engine, interaction: Interaction):
-    log.debug(engine)
+    if sum(engine.operations_probs) == 1:
+        status_text = "Everything is fine"
+        status = True
+    
+    else:
+        status_text = f"The weight of the probabilities is different from 1. You've {sum(engine.operations_probs)}"
+        status = False
+    
     embed = Embed(
         title = "Math engine editor",
-        description = f"Customize your math editor\n\n**Length:** {engine.length}\n",
+        description = f"Customize your math editor\n\n**Length:** {engine.length}\n{status_text}",
         color = COLOR
     )
+
+    for range, frequency, sign in zip(engine.range, engine.operations_probs, ["Addition", "Substraction", "Multiplication", "Division"]):
+        embed.add_field(
+            name = sign,
+            value = f"{str(range)}   {int(frequency*100)}% chance         "
+        )
+
     view = View(timeout = None).add_item(
+        Button(
+            label = "Addition",
+            custom_id = f"DEFINEOP#+#{interaction.user.id}",
+            style = ButtonStyle.blurple
+        )
+    ).add_item(
+        Button(
+            label = "Substraction",
+            custom_id = f"DEFINEOP#-#{interaction.user.id}",
+            style = ButtonStyle.blurple
+        )
+    ).add_item(
+        Button(
+            label = "Multiplication",
+            custom_id = f"DEFINEOP#*#{interaction.user.id}",
+            style = ButtonStyle.blurple
+        )
+    ).add_item(
+        Button(
+            label = "Division",
+            custom_id = f"DEFINEOP#/#{interaction.user.id}",
+            style = ButtonStyle.blurple
+        )
+    ).add_item(
         Button(
             label = "Define number of calcs",
             custom_id = f"DEFINENBCALCS#{interaction.user.id}",
-            style = ButtonStyle.blurple
+            style = ButtonStyle.blurple,
+            row = 1
         )
     ).add_item(
         Button(
-            label = "Define + operations",
-            custom_id = f"DEFINE+OP#{interaction.user.id}",
-            style = ButtonStyle.blurple
-        )
-    ).add_item(
-        Button(
-            label = "Define - operations",
-            custom_id = f"DEFINE-OP#{interaction.user.id}",
-            style = ButtonStyle.blurple
-        )
-    ).add_item(
-        Button(
-            label = "Define * operations",
-            custom_id = f"DEFINE*OP#{interaction.user.id}",
-            style = ButtonStyle.blurple
-        )
-    ).add_item(
-        Button(
-            label = "Define / operations",
-            custom_id = f"DEFINE/OP#{interaction.user.id}",
-            style = ButtonStyle.blurple
-        )
-    ).add_item(
-        Button(
-            label = "Start Game",
+            label = "OK",
             style = ButtonStyle.green,
-            custom_id = f"STARTCUSTOM#{interaction.user.id}"
+            custom_id = f"STARTCUSTOM#{interaction.user.id}",
+            row = 1,
+            disabled = not status
         )
     )
     return embed, view
 
 def define_operation(operation: Literal['+', '-', '/', '*'], engine: Engine, interaction: Interaction):
-    log.debug(engine)
     match operation:
         case '+':
             range = engine.range.add_range
@@ -126,19 +148,19 @@ def define_operation(operation: Literal['+', '-', '/', '*'], engine: Engine, int
 
     embed = Embed(
         title = f"Customize operation '{operation}'",
-        description = f"**Frequency:** {engine.operations_probs[0 if operation == '+' else 1 if operation == '-' else 2 if operation == '/' else '*']}\n**Range:** [{range[0]};{range[1]}]",
+        description = f"**Frequency:** {engine.operations_probs[operation]}\n**Range:** [{range[0]};{range[1]}]",
         color = COLOR
     )
     view = View(timeout = None).add_item(
         Button(
             label = "Define frequency",
             style = ButtonStyle.blurple,
-            custom_id = f"SET{operation}FREQU#{interaction.user.id}"
+            custom_id = f"SETFREQU#{operation}#{interaction.user.id}"
         )
     ).add_item(
         Button(
             label = "Define range",
-            custom_id = f"SET{operation}RANGE#{interaction.user.id}",
+            custom_id = f"SETRANGE#{operation}#{interaction.user.id}",
             style = ButtonStyle.blurple
         )
     ).add_item(

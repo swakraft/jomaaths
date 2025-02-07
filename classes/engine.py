@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Literal
 from random import Random
+from init import client
+from discord import Message, TextChannel, User
 
 
 class Calc:
@@ -56,9 +58,26 @@ class RangeSettings:
     
     def __repr__(self) -> str:
         return f"<RangeSettings add_range={self.add_range}, substract_range={self.subtract_range}, divide_range={self.divide_range}, multiply_range={self.multiply_range}, coef_range={self.coef_range}, eval_range={self.eval_range}>"
+    
+    def __getitem__(self, key: Literal["+", "-", "/", "*"]):
+        match key:
+            case "+":
+                return self.add_range
+        
+            case "-":
+                return self.subtract_range
+            
+            case "/":
+                return self.divide_range
+            
+            case "*":
+                return self.multiply_range
+        
+    def __iter__(self):
+        return iter([self.add_range, self.subtract_range, self.multiply_range, self.divide_range])
 
 class ProbSettings:
-    def __init__(self, add_prob: float | int = 0, subtract_prob: float | int = 0, divide_prob: float | int = 0, multiply_prob: list = 0, der_prob: float | int = 0) -> None:
+    def __init__(self, add_prob: float | int = 0, subtract_prob: float | int = 0, divide_prob: float | int = 0, multiply_prob: float | int = 0, der_prob: float | int = 0) -> None:
         self.add_prob = add_prob
         self.subtract_prob = subtract_prob
         self.divide_prob = divide_prob
@@ -70,10 +89,25 @@ class ProbSettings:
     def __repr__(self) -> str:
         return f"<RangeSettings add_prob={self.add_prob}, subtract_prob={self.subtract_prob}, divide_prob={self.divide_prob}, multiply_prob={self.multiply_prob}, der_prob={self.der_prob}>"
 
-    def __iter__(self) -> list[float | int]:
-        return iter([self.add_prob, self.subtract_prob, self.divide_prob, self.multiply_prob, self.der_prob])
+    def __iter__(self) -> float | int:
+        return iter([self.add_prob, self.subtract_prob, self.multiply_prob, self.divide_prob, self.der_prob])
     
-
+    def __getitem__(self, key: Literal["+", "-", "/", "*"]):
+        match key:
+            case "+":
+                return self.add_prob
+        
+            case "-":
+                return self.subtract_prob
+            
+            case "/":
+                return self.divide_prob
+            
+            case "*":
+                return self.multiply_prob
+            
+            case "der":
+                return self.der_prob
 
 class Polynomial:
     def __init__(self, coeffs: list[int | float], exps: list[int] = None) -> None:
@@ -185,3 +219,91 @@ class Engine:
     
     def __repr__(self) -> str:
         return f"<Engine length={self.length}, operations={self.operations}, operations_probs={self.operations_probs}, range{self.range}"
+    
+    @classmethod
+    def baby(cls):
+        return cls(ProbSettings(0.5, 0.5, 0, 0, 0), RangeSettings([1, 10], [1, 10]), 5)
+
+    @classmethod
+    def esay(cls):
+        return cls(ProbSettings(0.25, 0.25, 0.25, 0.25), RangeSettings([1, 10], [1, 10], [1, 10], [1, 10]), 10)
+    
+    @classmethod
+    def normal(cls):
+        return cls(
+            range = RangeSettings(
+                add_range = [1, 100],
+                subtract_range = [1, 100],
+                divide_range = [1, 100],
+                multiply_range = [1, 10]
+            ),
+            length = 15
+        )
+
+    @classmethod
+    def medium(cls):
+        return cls(
+            operations_probs = ProbSettings(der_prob = 1),
+            length = 3
+        )
+    
+    @classmethod
+    def from_difficulty_id(cls, difficulty_id: Literal["baby", "easy", "normal", "medium", "custom"]):
+        match difficulty_id:
+            case "baby":
+                return cls.baby()
+            
+            case "easy":
+                return cls.esay()
+            
+            case "normal":
+                return cls.normal()
+            
+            case "medium":
+                return cls.medium()
+        
+            case "custom":
+                return cls()
+            
+            case _:
+                raise ValueError(f"Unknown difficulty id: {difficulty_id}")
+    
+    async def start(self, channel: TextChannel, user: User) -> list[dict]:
+        stats:list[dict] = []
+        for calc in self.calcs:
+            await channel.send(
+                content = str(calc),
+            )
+        
+            def check(message: Message):
+                return message.author.id == user.id and message.channel.id == channel.id
+            
+            start = datetime.now()
+            message: Message = await client.wait_for("message", check = check)
+            end = datetime.now()
+            content = message.content.strip()
+            stat = {
+                "duration": (end - start).total_seconds(),
+                "calc": str(calc),
+                "user_answer": content,
+                "answer": calc.answer,
+                "date": int(datetime.now().timestamp())
+            }
+
+            try: 
+                content = int(content)
+            
+            except:
+                message.reply(content = "Please only send numbers")
+            
+            if content == calc.answer:
+                #await message.add_reaction("✅")
+                stat['success'] = True
+            
+            else:
+                #await message.add_reaction("😐")
+                stat['success'] = False
+            
+            stats.append(stat)
+        
+        return stats
